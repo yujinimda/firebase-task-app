@@ -1,7 +1,7 @@
-import WriteModal from "./components/WriteModal";
+import WriteModal from "../src/components/todolist/WriteModal";
 import "./styles/styles.css"
-import List from './components/List';
-import Sidebar from './components/Sidebar';
+import List from '../src/components/todolist/List';
+import Sidebar from '../src/components/todolist/Sidebar';
 
 
 function App() {

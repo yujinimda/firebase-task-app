@@ -1,7 +1,7 @@
-import { useModalStore } from "../store/modalStore";
-import { useTodoStore } from '../store/todoStore';
-import Button from "./Button";
-import {CloseIcon} from "../components/Icon"
+import { useModalStore } from "../../store/modalStore";
+import { useTodoStore } from '../../store/todoStore';
+import Button from "../todolist/Button";
+import {CloseIcon} from "../todolist/Icon"
 import { useRef } from "react";
 
 export default function WriteModal() {

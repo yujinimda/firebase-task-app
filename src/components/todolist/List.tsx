@@ -1,7 +1,7 @@
-import TodoItem from '../components/TodoItem';
-import { useTodoStore } from '../store/todoStore';
-import Button from './Button';
-import {AddIconBlue} from "./Icon"
+import TodoItem from './TodoItem';
+import { useTodoStore } from '../../store/todoStore';
+import Button from '../todolist/Button';
+import {AddIconBlue} from "../todolist/Icon"
 
 export default function List() {
   const { todos, isFiltered, filteredTodos, allDeleteTodo } = useTodoStore();

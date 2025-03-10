@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useTodoStore, Todo } from "../store/todoStore";
+import { useTodoStore, Todo } from "../../store/todoStore";
 import { StarFilledIcon, StarOutlineIcon, DeleteIcon, OnCheckIcon, OffCheckIcon} from "./Icon"
 import Button from "./Button";
 

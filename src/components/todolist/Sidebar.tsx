@@ -1,10 +1,14 @@
 import { useState } from 'react';
-import { useTodoStore } from '../store/todoStore';
-import { useModalStore } from '../store/modalStore';
+import { useAuthStore } from '../../store/authStore';
+import { useTodoStore } from '../../store/todoStore';
+import { useModalStore } from '../../store/modalStore';
 import { AddIconBlack, AllTaskBlack, StarOutlineIcon, StarFilledIcon } from './Icon';
-import Button from '../components/Button';
+import Button from './Button';
+import SignUp from '../auth/Signup';
+import Login  from '../auth/Login';
 
 export default function Sidebar() {
+  const { user, logout } = useAuthStore();
   const { showImportantTodos, showAllTodos } = useTodoStore();
   const { openModal } = useModalStore();
   
@@ -24,6 +28,18 @@ export default function Sidebar() {
   return (
     <aside className="w-[236px] flex-none bg-white !p-5 rounded-xl shadow-md">
       <h2 className="text-[24px ] text-gray-800 !mb-8">Todo List</h2>
+      {/* 로그인 확인 */}
+      {user ? (
+        <div>
+          <p>환영합니다, {user.email}!</p>
+          <button onClick={logout}>로그아웃</button>
+        </div>
+      ) : (
+        <div>
+          <SignUp />
+          <Login />
+        </div>
+      )}
 
       {/* 만들기 버튼 */}
       <Button onClick={openModal} color="white">
