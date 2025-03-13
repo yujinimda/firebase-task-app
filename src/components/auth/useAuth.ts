@@ -10,8 +10,17 @@ export const useAuth = () => {
   // 회원가입
   const register = async (email: string, password: string) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password); //회원가입이 완료되면 setUser(userCredential.user)를 호출
+
+    //firestore에 유저 정보 저장 (문서 ID를 이메일로 설정)
+    await setDoc(doc(db, "users", email),{
+      uid: userCredential.user.uid
+    })
+
     setUser(userCredential.user);
   };
+
+ 
+
 
   // 로그인
   const login = async (email: string, password: string) => {

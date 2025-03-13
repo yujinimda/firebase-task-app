@@ -11,8 +11,6 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-console.log("🔥 Firebase API Key:", import.meta.env.VITE_FIREBASE_API_KEY);
-
 
 // firebase 앱 초기화
 const app = initializeApp(firebaseConfig);
