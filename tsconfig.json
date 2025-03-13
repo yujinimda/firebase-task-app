@@ -7,5 +7,4 @@
   "compilerOptions": {
     "types": ["vite/client"]
   },
-  "types": ["vite/client"]
 }
