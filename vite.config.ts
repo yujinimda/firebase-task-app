@@ -10,4 +10,7 @@ export default defineConfig({
       plugins: [tailwindcss, autoprefixer], // tailwindcss 대신 @tailwindcss/postcss 사용
     },
   },
+  define: {
+    "process.env": {},
+  },
 });

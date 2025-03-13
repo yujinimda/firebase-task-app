@@ -1,6 +1,8 @@
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../../lib/firebaseConfig";
 import { useAuthStore } from "../../store/authStore";
+import { db } from "../../lib/firebaseConfig";
+import { doc, setDoc } from "firebase/firestore";
 
 export const useAuth = () => {
   const setUser = useAuthStore((state) => state.setUser);

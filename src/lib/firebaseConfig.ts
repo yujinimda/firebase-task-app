@@ -3,13 +3,16 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBAlrF7bCPZ8VkMFHMQeXfD0FzW8Ovn2u0",
-  authDomain: "signup-firebase-5768a.firebaseapp.com",
-  projectId: "signup-firebase-5768a",
-  storageBucket: "signup-firebase-5768a.firebasestorage.app",
-  messagingSenderId: "1040714203005",
-  appId: "1:1040714203005:web:b152bcfa0d7584e7895614"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
+
+console.log("🔥 Firebase API Key:", import.meta.env.VITE_FIREBASE_API_KEY);
+
 
 // firebase 앱 초기화
 const app = initializeApp(firebaseConfig);
