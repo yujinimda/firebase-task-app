@@ -12,7 +12,6 @@ export default function Button({ onClick, color = "white", children }: ButtonPro
     icon:  "p-[4px]"
   }[color] || "";
 
-  console.log("Button color:", color);
 
   return (
     <button className={`${baseStyle} ${colorStyle}`} onClick={onClick}>
