@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { collection, addDoc, getDoc, doc, deleteDoc, getDocs, setDoc, updateDoc, query, where } from "firebase/firestore";
+import { collection, addDoc, getDoc, doc, deleteDoc, getDocs, setDoc, updateDoc, query, where, onSnapshot } from "firebase/firestore";
 import { db, auth } from "../lib/firebaseConfig";
 
 // Todo 타입 정의
@@ -366,41 +366,42 @@ export const useTodoStore = create<TodoStore>()(
         }
       },
         
-      showImportantTodos: async () => {
+      showImportantTodos: () => {
         const user = auth.currentUser;
-        
-
-        if(user){
+      
+        if (user) {
           try {
             const todosRef = collection(db, "users", user.uid, "todos");
-            //중요한 투두만 가져오기
-            const q = query(todosRef, where("isImportant", "==", true))
-            const querySnapshot = await getDocs(q);
-
-            const importantTodos: Todo[] = querySnapshot.docs.map((doc) => {
-              const data = doc.data() as Todo;
+            const q = query(todosRef, where("isImportant", "==", true));
       
-              return {
-                id: doc.id,
-                title: data.title || "",
-                content: data.content || "",
-                completed: data.completed || false,
-                isImportant: data.isImportant || false,
-                date: data.date || "",
-              };
+            // Firestore 실시간 업데이트 감지
+            onSnapshot(q, (querySnapshot) => {
+              const importantTodos: Todo[] = querySnapshot.docs.map((doc) => {
+                const data = doc.data() as Todo;
+                return {
+                  id: doc.id,
+                  title: data.title || "",
+                  content: data.content || "",
+                  completed: data.completed || false,
+                  isImportant: data.isImportant || false,
+                  date: data.date || "",
+                };
+              });
+      
+              console.log(`✅ Firestore에서 실시간으로 ${importantTodos.length}개의 중요한 Todo 가져옴`);
+      
+              // Zustand 상태 업데이트
+              set({
+                filteredTodos: [...importantTodos], // 새로운 배열로 설정
+                isFiltered: true,
+              });
             });
-
-            set({
-              filteredTodos: importantTodos,
-              isFiltered: true,
-            });
-            
-          } catch(error) {
-            console.error("Firestore에 데이터를 저장하는 중 오류 발생:", error);
+      
+          } catch (error) {
+            console.error("Firestore에서 중요한 Todo 불러오기 실패:", error);
           }
         } else {
           const { todos } = get();
-
           set({
             filteredTodos: todos.filter((todo) => todo.isImportant),
             isFiltered: true,
@@ -408,33 +409,37 @@ export const useTodoStore = create<TodoStore>()(
         }
       },
 
-      showAllTodos: async () => {
+      showAllTodos: () => {
         const user = auth.currentUser;
-        if(user){
+      
+        if (user) {
           try {
             const todosRef = collection(db, "users", user.uid, "todos");
-            const querySnapshot = await getDocs(todosRef);
-
-            const allTodos: Todo[] = querySnapshot.docs.map((doc) => {
-              const data = doc.data() as Todo;
       
-              return {
-                id: doc.id,
-                title: data.title || "",
-                content: data.content || "",
-                completed: data.completed || false,
-                isImportant: data.isImportant || false,
-                date: data.date || "",
-              };
+            // Firestore 실시간 업데이트 감지
+            onSnapshot(todosRef, (querySnapshot) => {
+              const allTodos: Todo[] = querySnapshot.docs.map((doc) => {
+                const data = doc.data() as Todo;
+                return {
+                  id: doc.id,
+                  title: data.title || "",
+                  content: data.content || "",
+                  completed: data.completed || false,
+                  isImportant: data.isImportant || false,
+                  date: data.date || "",
+                };
+              });
+      
+      
+              // Zustand 상태 업데이트
+              set({
+                filteredTodos: [...allTodos], // 새로운 배열로 설정
+                isFiltered: false, // 필터링 해제
+              });
             });
-
-            set({
-              filteredTodos: allTodos,
-              isFiltered: true,
-            });
-            
-          } catch(error) {
-            console.error("Firestore에 데이터를 저장하는 중 오류 발생:", error);
+      
+          } catch (error) {
+            console.error(error);
           }
         } else {
           set({
