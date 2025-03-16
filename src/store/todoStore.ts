@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { collection, addDoc, getDoc, doc, deleteDoc, getDocs } from "firebase/firestore";
+import { collection, addDoc, getDoc, doc, deleteDoc, getDocs, setDoc, updateDoc, query, where } from "firebase/firestore";
 import { db, auth } from "../lib/firebaseConfig";
 
 // Todo 타입 정의
@@ -117,28 +117,45 @@ export const useTodoStore = create<TodoStore>()(
           date,
         };
       
-        const docRef = await addDoc(collection(db, "users", user.uid, "todos"), newTodo);
-        console.log("Firestore에 저장된 문서 ID:", docRef.id);
-
-        if (!docRef.id) {
-          console.error("Firestore 문서 ID가 생성되지 않았습니다.");
-          return;
-        }       
-        
-        // 원래는 바로 아래 배열에 넣었다가 위로 뺐다 왜냐면 firebase문서가 생기기 전이기 때문이다. docRef.id 를 알수없어서
-        // Firestore에서 생성된 문서 ID를 newTodo에 할당
-        const newTodoWithId = { ...newTodo, id: docRef.id };
-
-        // Firestore에서 생성된 문서 ID를 할당
-        set((state) => ({
-          todos: [...state.todos, newTodoWithId],
-        }));
+        try {
+          const docRef = await addDoc(collection(db, "users", user.uid, "todos"), newTodo);
+          console.log("Firestore에 저장된 문서 ID:", docRef.id);
+  
+          // Firestore에서 생성된 문서 ID를 Firestore 문서에도 업데이트
+          await setDoc(doc(db, "users", user.uid, "todos", docRef.id), { ...newTodo, id: docRef.id });
+  
+          // 원래는 바로 아래 배열에 넣었다가 위로 뺐다 왜냐면 firebase문서가 생기기 전이기 때문이다. docRef.id 를 알수없어서
+          // Firestore에서 생성된 문서 ID를 newTodo에 할당
+          const newTodoWithId = { ...newTodo, id: docRef.id };
+  
+          // Firestore에서 생성된 문서 ID를 할당
+          set((state) => ({
+            todos: [...state.todos, newTodoWithId],
+          }));
+        } catch (error){
+          console.error("Firestore에 데이터를 저장하는 중 오류 발생:", error);
+        }
       },
       
       deleteTodo: async  (id) => {
         const user = auth.currentUser;
+
         if(user) {
+
           await deleteDoc(doc(db, "users", user.uid, "todos", id.toString()));
+          console.log("Firestore에 저장된 문서 ID:", id.toString());
+
+          set((state) => {
+            const updatedTodos = state.todos.filter((todo) => todo.id !== id);
+        
+            return {
+              todos: updatedTodos,
+              filteredTodos: state.isFiltered
+                ? updatedTodos.filter((todo) => todo.isImportant)
+                : [],
+            };
+          });
+
         } else {
           set((state) => {
             const updatedTodos = state.todos.filter((todo) => todo.id !== id);
@@ -151,77 +168,280 @@ export const useTodoStore = create<TodoStore>()(
             };
           });
         }
-       
       },
 
-      endTodo: (id) => {
-        set((state) => {
-          const updatedTodos = state.todos.map((todo) =>
-            todo.id === id ? { ...todo, completed: !todo.completed } : todo
-          );
+      endTodo: async (id) => {
+        const user = auth.currentUser;
 
-          return {
-            todos: updatedTodos,
-            filteredTodos: state.isFiltered
-              ? updatedTodos.filter((todo) => todo.isImportant)
-              : [],
-          };
-        });
+        if(user) {
+
+          try {
+
+            const todoRef = doc(db, "users", user.uid, "todos", id.toString());
+
+            // 현재 completed 상태 가져오기
+            const todoSnap = await getDoc(todoRef);
+            if (!todoSnap.exists()) {
+              console.error("해당 Todo가 존재하지 않습니다.");
+              return;
+            }
+
+            const currentCompleted = todoSnap.data().completed;
+            await updateDoc(todoRef, { completed: !currentCompleted });
+
+            console.log(`Firestore에서 Todo ${id}의 완료 상태를 ${!currentCompleted}로 변경`);
+            
+            set((state) => {
+              const updatedTodos = state.todos.map((todo) =>
+                todo.id === id ? { ...todo, completed: !todo.completed } : todo
+              );
+    
+              return {
+                todos: updatedTodos,
+                filteredTodos: state.isFiltered
+                  ? updatedTodos.filter((todo) => todo.isImportant)
+                  : [],
+              };
+            });
+            
+          } catch {
+           console.log();
+          }
+        } else {
+          set((state) => {
+            const updatedTodos = state.todos.map((todo) =>
+              todo.id === id ? { ...todo, completed: !todo.completed } : todo
+            );
+  
+            return {
+              todos: updatedTodos,
+              filteredTodos: state.isFiltered
+                ? updatedTodos.filter((todo) => todo.isImportant)
+                : [],
+            };
+          });
+        }
       },
 
-      editTodo: (id, newTitle, newText, newDate) => {
-        set((state) => {
-          const updatedTodos = state.todos.map((todo) =>
-            todo.id === id
-              ? { ...todo, title: newTitle, content: newText, date: newDate }
-              : todo
-          );
-      
-          return {
-            todos: updatedTodos,
-            filteredTodos: state.isFiltered
-              ? updatedTodos.filter((todo) => todo.isImportant)
-              : [],
-          };
-        });
+      editTodo: async (id, newTitle, newText, newDate) => {
+        const user = auth.currentUser;
+
+        if(user) {
+
+          try {
+
+            const todoRef = doc(db, "users", user.uid, "todos", id.toString());
+
+            // 현재 작성 상태 가져오기
+            const todoSnap = await getDoc(todoRef);
+            if (!todoSnap.exists()) {
+              console.error("해당 Todo가 존재하지 않습니다.");
+              return;
+            }
+
+            //firestore에서 제목, 내용, 날짜 업데이트
+            await updateDoc(todoRef, {
+              title: newTitle,
+              content: newText,
+              date: newDate,
+            });
+            
+            set((state) => {
+              const updatedTodos = state.todos.map((todo) =>
+                todo.id === id
+                  ? { ...todo, title: newTitle, content: newText, date: newDate }
+                  : todo
+              );
+          
+              return {
+                todos: updatedTodos,
+                filteredTodos: state.isFiltered
+                  ? updatedTodos.filter((todo) => todo.isImportant)
+                  : [],
+              };
+            });
+            
+          } catch(error) {
+            console.error("Firestore에 데이터를 저장하는 중 오류 발생:", error);
+          }
+        } else {
+          set((state) => {
+            const updatedTodos = state.todos.map((todo) =>
+              todo.id === id
+                ? { ...todo, title: newTitle, content: newText, date: newDate }
+                : todo
+            );
+        
+            return {
+              todos: updatedTodos,
+              filteredTodos: state.isFiltered
+                ? updatedTodos.filter((todo) => todo.isImportant)
+                : [],
+            };
+          });
+        }
       },
 
-      allDeleteTodo: () =>
-        set(() => ({
-          todos: [],
-          filteredTodos: [],
-          isFiltered: false,
-        })),
+      allDeleteTodo: async () => {
+        const user = auth.currentUser;
 
-      importantToggle: (id) => {
-        set((state) => {
-          const updatedTodos = state.todos.map((todo) =>
-            todo.id === id ? { ...todo, isImportant: !todo.isImportant } : todo
-          );
-      
-          // 필터 적용 여부에 따라 중요 리스트 업데이트
-          return {
-            todos: updatedTodos,
-            filteredTodos: state.isFiltered
-              ? updatedTodos.filter((todo) => todo.isImportant)
-              : [],
-          };
-        });
+        if(user) {
+
+          try {
+
+            const todosRef = collection(db, "users", user.uid, "todos");
+            const querySnapshot = await getDocs(todosRef); //반환되는 객체
+
+            // firestore에서 모든 Todo 문서 삭제
+            const deletePromises = querySnapshot.docs.map((doc) => deleteDoc(doc.ref));
+            await Promise.all(deletePromises);
+            
+            set(() => ({
+              todos: [],
+              filteredTodos: [],
+              isFiltered: false,
+            }))
+            
+          } catch (error){
+            console.error("Firestore에 데이터를 저장하는 중 오류 발생:", error);
+          }
+        } else {
+          set(() => ({
+            todos: [],
+            filteredTodos: [],
+            isFiltered: false,
+          }))
+        }
+      },
+
+      importantToggle: async (id) => {
+        const user = auth.currentUser;
+
+        if(user) {
+
+          try {
+
+            const todoRef = doc(db, "users", user.uid, "todos", id.toString());
+
+            // 현재 isImportant 상태 가져오기
+            const todoSnap = await getDoc(todoRef);
+            if (!todoSnap.exists()) {
+              console.error("해당 Todo가 존재하지 않습니다.");
+              return;
+            }
+
+            const currentIsImportant = todoSnap.data().isImportant;
+            await updateDoc(todoRef, { isImportant: !currentIsImportant });
+            
+            set((state) => {
+              const updatedTodos = state.todos.map((todo) =>
+                todo.id === id ? { ...todo, isImportant: !todo.isImportant } : todo
+              );
+          
+              // 필터 적용 여부에 따라 중요 리스트 업데이트
+              return {
+                todos: updatedTodos,
+                filteredTodos: state.isFiltered
+                  ? updatedTodos.filter((todo) => todo.isImportant)
+                  : [],
+              };
+            });
+          } catch (error){
+            console.error("Firestore에 데이터를 저장하는 중 오류 발생:", error);
+          }
+        } else {
+          set((state) => {
+            const updatedTodos = state.todos.map((todo) =>
+              todo.id === id ? { ...todo, isImportant: !todo.isImportant } : todo
+            );
+        
+            // 필터 적용 여부에 따라 중요 리스트 업데이트
+            return {
+              todos: updatedTodos,
+              filteredTodos: state.isFiltered
+                ? updatedTodos.filter((todo) => todo.isImportant)
+                : [],
+            };
+          });
+        }
       },
         
-      showImportantTodos: () => {
-        const { todos } = get();
-        set({
-          filteredTodos: todos.filter((todo) => todo.isImportant),
-          isFiltered: true,
-        });
+      showImportantTodos: async () => {
+        const user = auth.currentUser;
+        
+
+        if(user){
+          try {
+            const todosRef = collection(db, "users", user.uid, "todos");
+            //중요한 투두만 가져오기
+            const q = query(todosRef, where("isImportant", "==", true))
+            const querySnapshot = await getDocs(q);
+
+            const importantTodos: Todo[] = querySnapshot.docs.map((doc) => {
+              const data = doc.data() as Todo;
+      
+              return {
+                id: doc.id,
+                title: data.title || "",
+                content: data.content || "",
+                completed: data.completed || false,
+                isImportant: data.isImportant || false,
+                date: data.date || "",
+              };
+            });
+
+            set({
+              filteredTodos: importantTodos,
+              isFiltered: true,
+            });
+            
+          } catch(error) {
+            console.error("Firestore에 데이터를 저장하는 중 오류 발생:", error);
+          }
+        } else {
+          const { todos } = get();
+
+          set({
+            filteredTodos: todos.filter((todo) => todo.isImportant),
+            isFiltered: true,
+          });
+        }
       },
 
-      showAllTodos: () => {
-        set({
-          filteredTodos: [],
-          isFiltered: false,
-        });
+      showAllTodos: async () => {
+        const user = auth.currentUser;
+        if(user){
+          try {
+            const todosRef = collection(db, "users", user.uid, "todos");
+            const querySnapshot = await getDocs(todosRef);
+
+            const allTodos: Todo[] = querySnapshot.docs.map((doc) => {
+              const data = doc.data() as Todo;
+      
+              return {
+                id: doc.id,
+                title: data.title || "",
+                content: data.content || "",
+                completed: data.completed || false,
+                isImportant: data.isImportant || false,
+                date: data.date || "",
+              };
+            });
+
+            set({
+              filteredTodos: allTodos,
+              isFiltered: true,
+            });
+            
+          } catch(error) {
+            console.error("Firestore에 데이터를 저장하는 중 오류 발생:", error);
+          }
+        } else {
+          set({
+            filteredTodos: [],
+            isFiltered: false,
+          });
+        }
       },
     }),
     {
