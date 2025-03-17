@@ -2,6 +2,8 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { collection, addDoc, getDoc, doc, deleteDoc, getDocs, setDoc, updateDoc, query, where, onSnapshot } from "firebase/firestore";
 import { db, auth } from "../lib/firebaseConfig";
+import { signOut } from "firebase/auth";
+import { useAuthStore } from "../store/authStore";
 
 // Todo 타입 정의
 export type Todo = {
@@ -40,6 +42,9 @@ type TodoStore = {
 
   isEditingId: number | null; 
   setEditingId: (id: number | null) => void; // 수정 모드 
+
+   fetchTodo: () => Promise<void>; //Promise 비동기를 반환 (firebase에서 투두 가져오기)
+   logoutUser: () => void; //로그아웃시 로컬 초기화
 };
 
 export const useTodoStore = create<TodoStore>()(
@@ -59,15 +64,16 @@ export const useTodoStore = create<TodoStore>()(
       setDate: (date) => set({ date }),
       setEditingId: (id) => set({ isEditingId: id }),
 
-
-      // 비회원일때 로컬만 회원일땐 파이어베이스에서 가져오기
-      fetchTodos: async () => {
+       // Firestore에서 Todo 가져오기 (로그인 시 실행됨)
+       fetchTodo: async () => {
         const user = auth.currentUser;
         if (user) {
+          set({ todos: [] });
+
           const querySnapshot = await getDocs(collection(db, "users", user.uid, "todos"));
           const todos = querySnapshot.docs.map((doc) => ({
             id: doc.id.toString(),
-            ...(doc.data() as Todo), // doc.data()의 반환 타입이 unknown이여서 일단 Todo타입으로 캐스팅 
+            ...(doc.data() as Todo),
           })) as Todo[];
 
           set({ todos });
@@ -242,7 +248,7 @@ export const useTodoStore = create<TodoStore>()(
             //firestore에서 제목, 내용, 날짜 업데이트
             await updateDoc(todoRef, {
               title: newTitle,
-              content: newText,
+              content: newText.trim() ? newText : "\u00A0",
               date: newDate,
             });
             
@@ -268,7 +274,12 @@ export const useTodoStore = create<TodoStore>()(
           set((state) => {
             const updatedTodos = state.todos.map((todo) =>
               todo.id === id
-                ? { ...todo, title: newTitle, content: newText, date: newDate }
+                ? {
+                  ...todo,
+                  title: newTitle,
+                  content: newText.trim() ? newText : "\u00A0",
+                  date: newDate
+                }
                 : todo
             );
         
@@ -388,8 +399,6 @@ export const useTodoStore = create<TodoStore>()(
                 };
               });
       
-              console.log(`✅ Firestore에서 실시간으로 ${importantTodos.length}개의 중요한 Todo 가져옴`);
-      
               // Zustand 상태 업데이트
               set({
                 filteredTodos: [...importantTodos], // 새로운 배열로 설정
@@ -448,6 +457,31 @@ export const useTodoStore = create<TodoStore>()(
           });
         }
       },
+
+      // 로그아웃 시 상태 초기화
+      logoutUser: async () => {
+
+        // zustand 상태 초기화
+        set(() => ({
+          todos: [],
+          filteredTodos: [],
+          isFiltered: false,
+          title: "",
+          content: "",
+          date: "",
+          isEditingId: null,
+        }));
+
+        // 퍼이어베이스 로그아웃 실행
+        await signOut(auth);
+
+        // zustand의 유저 상태도 초기화 (로그아웃 처리)
+        useAuthStore.getState().logout();
+
+        // 로컬 스토리지 데이터 삭제
+        localStorage.removeItem("todo-storage");
+      },
+
     }),
     {
       name: "todo-storage",
@@ -543,7 +577,8 @@ export const useTodoStore = create<TodoStore>()(
 //         })),
 
 //       importantToggle: (id) => {
-//         set((state) => {
+//       import { signOut } from 'firebase/auth';
+//  set((state) => {
 //           const updatedTodos = state.todos.map((todo) =>
 //             todo.id === id ? { ...todo, isImportant: !todo.isImportant } : todo
 //           );
