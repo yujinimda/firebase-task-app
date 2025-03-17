@@ -30,7 +30,7 @@ export default function TodoItem({ todo }: TodoItemProps) {
   const handleEdit = () => {
     if (editTitle.trim() && editText.trim() && editDate.trim()) {
       const store = useTodoStore.getState(); // Zustand에서 최신 상태 직접 가져오기
-      store.editTodo(todo.id, editTitle, editText, editDate);
+      store.editTodo(todo.id ?? "", editTitle, editText, editDate);
     }
     setEditingId(null);
     setEditingField(null);
@@ -42,7 +42,7 @@ export default function TodoItem({ todo }: TodoItemProps) {
       className="!my-2 flex items-center justify-between !p-[12px] hover:bg-[#f5f5f5] rounded-[8px]"
     >
       {/* 체크박스 */}
-      <button onClick={() => endTodo(todo.id)} className="icon">
+      <button onClick={() => endTodo(todo.id ?? "")} className="icon">
         {todo.completed ? <OnCheckIcon /> : <OffCheckIcon/>}
       </button>
 
@@ -60,7 +60,7 @@ export default function TodoItem({ todo }: TodoItemProps) {
           />
         ) : (
           <strong 
-          onClick={() => { setEditingId(todo.id); setEditingField("title"); }}
+          onClick={() => { setEditingId(todo.id ?? ""); setEditingField("title"); }}
           className={`text-[16px] font-bold cursor-pointer ${todo.completed ? "line-through" : ""}`}
         >
           {todo.title}
@@ -80,7 +80,7 @@ export default function TodoItem({ todo }: TodoItemProps) {
           />
         ) : (
           <span 
-            onClick={() => { setEditingId(todo.id); setEditingField("content"); }}
+            onClick={() => { setEditingId(todo.id ?? ""); setEditingField("content"); }}
             className="block text-[14px] text-gray-600 !mt-[4px] cursor-pointer"
           >
             {todo.content}
@@ -98,7 +98,7 @@ export default function TodoItem({ todo }: TodoItemProps) {
           />
         ) : (
           <span 
-            onClick={() => { setEditingId(todo.id); setEditingField("date"); }}
+            onClick={() => { setEditingId(todo.id ?? ""); setEditingField("date"); }}
             className="w-[94px] block !px-[6px] text-[13px] text-blue-500 !mt-[5px] cursor-pointer border rounded-full"
           >
             {todo.date}
@@ -108,9 +108,9 @@ export default function TodoItem({ todo }: TodoItemProps) {
 
       {/* 삭제 버튼 */}
       <div className="flex !w-[100px] gap-2 justify-end">
-      <Button  onClick={() => deleteTodo(todo.id)}  color="icon"><DeleteIcon/></Button>
+      <Button  onClick={() => deleteTodo(todo.id ?? "")}  color="icon"><DeleteIcon/></Button>
       {/* 중요 표시 버튼 */}
-      <Button onClick={() => importantToggle(todo.id)} color="icon">{todo.isImportant ? <StarFilledIcon /> : <StarOutlineIcon />}</Button>
+      <Button onClick={() => importantToggle(todo.id ?? "")} color="icon">{todo.isImportant ? <StarFilledIcon /> : <StarOutlineIcon />}</Button>
       </div>
     </li>
 

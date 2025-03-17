@@ -7,7 +7,7 @@ import { useAuthStore } from "../store/authStore";
 
 // Todo 타입 정의
 export type Todo = {
-  id?: number | string; // id에서 id? 로 수정 왜냐하면 원래 이거를 로컬에서는 날짜로 넣었는데 파이어베이스에서는 비어져있다가 처음 랜덤 생성되는 아이디가 들어갈꺼라서 
+  id?: string; // id에서 id? 로 수정 왜냐하면 원래 이거를 로컬에서는 날짜로 넣었는데 파이어베이스에서는 비어져있다가 처음 랜덤 생성되는 아이디가 들어갈꺼라서 
   title: string;
   content: string;
   completed: boolean;
@@ -32,16 +32,16 @@ type TodoStore = {
   setDate: (date: string) => void;
 
   addTodo: (title: string, content: string, date: string) => void;  // 새 글 추가
-  deleteTodo: (id: number) => void;
+  deleteTodo: (id: string) => void;
   allDeleteTodo: () => void;
-  endTodo: (id: number) => void; // 완료 된 리스트
-  editTodo: (id: number, newText: string, newTitle:string, date:string) => void;
-  importantToggle: (id: number) => void; // 중요 체크 토글
+  endTodo: (id: string) => void; // 완료 된 리스트
+  editTodo: (id: string, newText: string, newTitle:string, date:string) => void;
+  importantToggle: (id: string) => void; // 중요 체크 토글
   showImportantTodos: () => void; // 중요 항목만 보기
   showAllTodos: () => void; // 전체 보기
 
-  isEditingId: number | null; 
-  setEditingId: (id: number | null) => void; // 수정 모드 
+  isEditingId: string | null; 
+  setEditingId: (id: string | null) => void; // 수정 모드 
 
    fetchTodo: () => Promise<void>; //Promise 비동기를 반환 (firebase에서 투두 가져오기)
    logoutUser: () => void; //로그아웃시 로컬 초기화
@@ -72,7 +72,7 @@ export const useTodoStore = create<TodoStore>()(
 
           const querySnapshot = await getDocs(collection(db, "users", user.uid, "todos"));
           const todos = querySnapshot.docs.map((doc) => ({
-            id: doc.id.toString(),
+            id: doc.id,
             ...(doc.data() as Todo),
           })) as Todo[];
 
@@ -89,7 +89,7 @@ export const useTodoStore = create<TodoStore>()(
             todos: [
               ...state.todos,
               {
-                id: Date.now(), // 로컬 스토리지용 ID
+                id: Date.now().toString(), // 로컬 스토리지용 ID
                 title,
                 content: content.trim() ? content : "\u00A0",
                 completed: false,
@@ -152,7 +152,7 @@ export const useTodoStore = create<TodoStore>()(
           console.log("Firestore에 저장된 문서 ID:", id.toString());
 
           set((state) => {
-            const updatedTodos = state.todos.filter((todo) => todo.id !== id);
+            const updatedTodos = state.todos.filter((todo) => todo.id?.toString() === id );
         
             return {
               todos: updatedTodos,
@@ -164,7 +164,7 @@ export const useTodoStore = create<TodoStore>()(
 
         } else {
           set((state) => {
-            const updatedTodos = state.todos.filter((todo) => todo.id !== id);
+            const updatedTodos = state.todos.filter((todo) => todo.id?.toString() === id);
         
             return {
               todos: updatedTodos,
@@ -199,7 +199,7 @@ export const useTodoStore = create<TodoStore>()(
             
             set((state) => {
               const updatedTodos = state.todos.map((todo) =>
-                todo.id === id ? { ...todo, completed: !todo.completed } : todo
+                todo.id?.toString() === id ? { ...todo, completed: !todo.completed } : todo
               );
     
               return {
@@ -216,7 +216,7 @@ export const useTodoStore = create<TodoStore>()(
         } else {
           set((state) => {
             const updatedTodos = state.todos.map((todo) =>
-              todo.id === id ? { ...todo, completed: !todo.completed } : todo
+              todo.id?.toString() === id ? { ...todo, completed: !todo.completed } : todo
             );
   
             return {
@@ -254,7 +254,7 @@ export const useTodoStore = create<TodoStore>()(
             
             set((state) => {
               const updatedTodos = state.todos.map((todo) =>
-                todo.id === id
+                todo.id?.toString() === id
                   ? { ...todo, title: newTitle, content: newText, date: newDate }
                   : todo
               );
@@ -273,7 +273,7 @@ export const useTodoStore = create<TodoStore>()(
         } else {
           set((state) => {
             const updatedTodos = state.todos.map((todo) =>
-              todo.id === id
+              todo.id?.toString() === id
                 ? {
                   ...todo,
                   title: newTitle,
@@ -346,7 +346,7 @@ export const useTodoStore = create<TodoStore>()(
             
             set((state) => {
               const updatedTodos = state.todos.map((todo) =>
-                todo.id === id ? { ...todo, isImportant: !todo.isImportant } : todo
+                todo.id?.toString() === id ? { ...todo, isImportant: !todo.isImportant } : todo
               );
           
               // 필터 적용 여부에 따라 중요 리스트 업데이트
@@ -363,7 +363,7 @@ export const useTodoStore = create<TodoStore>()(
         } else {
           set((state) => {
             const updatedTodos = state.todos.map((todo) =>
-              todo.id === id ? { ...todo, isImportant: !todo.isImportant } : todo
+              todo.id?.toString() === id ? { ...todo, isImportant: !todo.isImportant } : todo
             );
         
             // 필터 적용 여부에 따라 중요 리스트 업데이트
