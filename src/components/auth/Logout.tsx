@@ -1,6 +1,4 @@
 import { useTodoStore } from "../../store/todoStore";
-import SignUp from "../auth/Signup";
-import Login from "../auth/Login";
 import { useAuthStore } from "../../store/authStore";
 
 const LogoutButton = () => {
@@ -19,12 +17,10 @@ const LogoutButton = () => {
       {user ? (
         <div>
           <p>환영합니다, {user?.email}!</p> 
-          <button onClick={handleLogout}>로그아웃</button>
+          <button className="!mt-[10px]" onClick={handleLogout}>로그아웃</button>
         </div>
       ) : (
         <div>
-          <SignUp />
-          <Login />
         </div>
       )}
     </div>

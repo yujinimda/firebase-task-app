@@ -293,6 +293,7 @@ export const useTodoStore = create<TodoStore>()(
         }
       },
 
+      //전체 완료로 수정
       allDeleteTodo: async () => {
         const user = auth.currentUser;
 
